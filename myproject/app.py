@@ -10,10 +10,11 @@ migrate = Migrate(app, db)
 class Person(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True, nullable=False)
+    finished = db.Column(db.Boolean)
 
 @app.route('/')
 def index():
-    people = Person.query.all()
+    people = Person.query.filter_by(finished=False)
     return render_template('index.html', people=people)
 
 @app.route('/add', methods=['POST'])
@@ -29,6 +30,16 @@ def add():
         db.session.add(new_person)
         db.session.commit()
         return redirect(url_for('index'))
+
+@app.route('/finish', methods=['POST'])
+def finish(): 
+    name = request.form['name']
+    finished_person = Person.query.filter_by(name=name).first()
+
+    if(not finished_person):
+        return "Please Enter a Valid Name"
+    else:
+        finished_person.finished = True
 
 if __name__ == '__main__':
     db.create_all()
