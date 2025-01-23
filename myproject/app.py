@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect
 import sqlite3
+import datetime
 
 app = Flask(__name__)
 
@@ -16,7 +17,9 @@ def init_db():
         CREATE TABLE IF NOT EXISTS entries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            email TEXT NOT NULL
+            start TEXT NOT NULL, 
+            end INTEGER, 
+            time INTEGER
         )
     ''')
     conn.commit()
@@ -24,13 +27,20 @@ def init_db():
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    init_db()
     if request.method == 'POST':
         name = request.form['name']
-        email = request.form['email']
-        
+        print(name)
+        now = datetime.datetime.now()
+
         # Insert the new entry into the database
         conn = get_db_connection()
-        conn.execute('INSERT INTO entries (name, email) VALUES (?, ?)', (name, email))
+
+        repeat = conn.execute('SELECT * FROM entries WHERE name = (?)', (name,)).fetchone()
+        if(repeat): 
+            return "Someone has already entered that name! "
+
+        conn.execute('INSERT INTO entries (name, start) VALUES (?, ?)', (name, now))
         conn.commit()
         conn.close()
         
