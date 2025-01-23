@@ -18,7 +18,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             start TEXT NOT NULL, 
-            end INTEGER, 
+            end TEXT, 
             time INTEGER
         )
     ''')
@@ -30,7 +30,6 @@ def index():
     init_db()
     if request.method == 'POST':
         name = request.form['name']
-        print(name)
         now = datetime.datetime.now()
 
         # Insert the new entry into the database
@@ -48,10 +47,33 @@ def index():
     
     # Fetch all entries to display
     conn = get_db_connection()
-    entries = conn.execute('SELECT * FROM entries').fetchall()
+    entries = conn.execute('SELECT * FROM entries ORDER BY time DESC').fetchall() #This part has been changed
     conn.close()
     
     return render_template('index.html', entries=entries)
+
+'''@app.route('/finish', methods=['POST'])
+def finish():
+    init_db()
+    name = request.form['name']
+    now = datetime.datetime.now()
+
+    conn = get_db_connection()
+
+    exist = conn.execute('SELECT * FROM entries WHERE name = (?)', (name,)).fetchone()
+    if(not exist):
+        return "Sorry, this user does not exist! "
+
+    start_time = conn.execute('SELECT start FROM entries WHERE name = (?)', (name,)).fetchall()
+    start = datetime.strptime(start_time, "%m/%d/%y %H:%M:%S")
+    c = now - start
+    time = c.total_seconds()
+    conn.execute('INSERT INTO entries (time, end) VALUES (?, ?)', (time, now))
+    conn.commit()
+
+    conn.close()
+        
+    return redirect('/')'''
 
 if __name__ == '__main__':
     init_db()  # Initialize the database
