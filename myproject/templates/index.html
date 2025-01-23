@@ -2,20 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>People's Names</title>
+    <title>Flask SQLite App</title>
 </head>
 <body>
-    <h1>People's Names</h1>
+    <h1>Add Entry</h1>
+    <form method="POST">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+        <br>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+        <br>
+        <button type="submit">Add</button>
+    </form>
+
+    <h2>Entries</h2>
     <ul>
-        {% for person in people %}
-            <li>{{ person.name }}</li>
+        {% for entry in entries %}
+            <li>{{ entry['name'] }} - {{ entry['email'] }}</li>
         {% endfor %}
     </ul>
-    <form action="/add" method="post">
-        <input type="text" name="name" placeholder="Enter a name" required>
-        <button type="submit">Add Name</button>
-    </form>
 </body>
 </html>

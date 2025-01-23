@@ -1,35 +1,48 @@
-from flask import Flask, render_template, request, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
+from flask import Flask, render_template, request, redirect
+import sqlite3
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///people.db'
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
 
-class Person(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), unique=True, nullable=False)
+# Function to connect to the database
+def get_db_connection():
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
-@app.route('/')
+# Create the database and table if it doesn't exist
+def init_db():
+    conn = get_db_connection()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    people = Person.query.all()
-    return render_template('index.html', people=people)
-
-@app.route('/add', methods=['POST'])
-def add():
-    name = request.form['name']
-    # Check if the name already exists in the database
-    existing_person = Person.query.filter_by(name=name).first()
-
-    if existing_person:
-        return "Name already exists in the database!"
-    else:
-        new_person = Person(name=name)
-        db.session.add(new_person)
-        db.session.commit()
-        return redirect(url_for('index'))
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        
+        # Insert the new entry into the database
+        conn = get_db_connection()
+        conn.execute('INSERT INTO entries (name, email) VALUES (?, ?)', (name, email))
+        conn.commit()
+        conn.close()
+        
+        return redirect('/')
+    
+    # Fetch all entries to display
+    conn = get_db_connection()
+    entries = conn.execute('SELECT * FROM entries').fetchall()
+    conn.close()
+    
+    return render_template('index.html', entries=entries)
 
 if __name__ == '__main__':
-    db.create_all()
+    init_db()  # Initialize the database
     app.run(debug=True)
