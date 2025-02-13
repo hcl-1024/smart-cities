@@ -31,11 +31,12 @@ def index():
     if request.method == 'POST':
         name = request.form['name']
         now = datetime.datetime.now()
+        now = now.strftime('%Y-%m-%d %H:%M:%S')
 
         # Insert the new entry into the database
         conn = get_db_connection()
 
-        repeat = conn.execute('SELECT * FROM entries WHERE name = (?)', (name,)).fetchone()
+        repeat = conn.execute('SELECT * FROM entries WHERE name = (?) AND end IS NULL', (name,)).fetchone()
         if(repeat): 
             return "Someone has already entered that name! "
 
@@ -47,33 +48,39 @@ def index():
     
     # Fetch all entries to display
     conn = get_db_connection()
-    entries = conn.execute('SELECT * FROM entries ORDER BY time DESC').fetchall() #This part has been changed
+    entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall() #This part has been changed
     conn.close()
     
     return render_template('index.html', entries=entries)
 
-'''@app.route('/finish', methods=['POST'])
+@app.route('/finish', methods=['GET', 'POST'])
 def finish():
     init_db()
-    name = request.form['name']
     now = datetime.datetime.now()
+    now = now.strftime('%Y-%m-%d %H:%M:%S')
 
-    conn = get_db_connection()
+    if request.method == "POST": 
+        name = request.form['name']
+        conn = get_db_connection()
+        exist = conn.execute('SELECT * FROM entries WHERE name = (?) AND end IS NULL', (name,)).fetchone()
+        if(not exist):
+            return "Sorry, this user does not exist or you need to make a new account after you've finished before! "
 
-    exist = conn.execute('SELECT * FROM entries WHERE name = (?)', (name,)).fetchone()
-    if(not exist):
-        return "Sorry, this user does not exist! "
-
-    start_time = conn.execute('SELECT start FROM entries WHERE name = (?)', (name,)).fetchall()
-    start = datetime.strptime(start_time, "%m/%d/%y %H:%M:%S")
-    c = now - start
-    time = c.total_seconds()
-    conn.execute('INSERT INTO entries (time, end) VALUES (?, ?)', (time, now))
-    conn.commit()
-
-    conn.close()
+        start_time = conn.execute('SELECT * FROM entries WHERE name = (?) AND end IS NULL', (name,)).fetchone()
+        start_time = start_time[2]
+        start = datetime.datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+        now = datetime.datetime.strptime(now, "%Y-%m-%d %H:%M:%S")
+        c = now - start
+        time = c.total_seconds()
+        conn.execute('UPDATE entries SET time = (?), end = (?) WHERE name = (?) AND end IS NULL', (time, now, name, ))
+        conn.commit()
+        conn.close()
         
-    return redirect('/')'''
+    conn = get_db_connection()
+    entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall() #This part has been changed
+    conn.close()
+
+    return render_template('index.html', entries=entries)
 
 if __name__ == '__main__':
     init_db()  # Initialize the database

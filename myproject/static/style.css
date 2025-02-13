@@ -1,0 +1,77 @@
+/* Reset default margin and padding */
+body, h1, h2, ul, li, form {
+    margin: 0;
+    padding: 0;
+}
+
+/* Center the heading */
+h1 {
+    font-family: "DM Serif Text", serif;
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* Style the form */
+form {
+    text-align: center;
+    margin-top: 20px;
+}
+
+label {
+    font-weight: bold;
+}
+
+input[type="text"] {
+    width: 200px;
+    padding: 5px;
+    margin: 5px 0;
+}
+
+button {
+    padding: 5px 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+/* Style the list of entries */
+h2 {
+    text-align: center;
+    margin-top: 20px;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 10px;
+}
+
+th, td {
+    border: 1px solid black;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    font-weight: bold;
+}
+
+tr.top th {
+    border-bottom: 2px solid black;
+}
+
+tr:not(.top) th {
+    font-weight: normal;
+}
+
+/* Responsive styles */
+@media only screen and (max-width: 600px) {
+    input[type="text"] {
+        width: 100%;
+    }
+}
