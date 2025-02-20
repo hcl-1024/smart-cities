@@ -3,8 +3,10 @@ import sqlite3
 import datetime
 
 
-baseurl = "/smartcities"
-app = Flask(__name__, static_url_path=baseurl)
+#baseurl = "/smartcities"
+#app = Flask(__name__, static_url_path=baseurl)
+app = Flask(__name__)
+
 
 
 # Function to connect to the database
@@ -28,7 +30,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-@app.route(baseurl + '/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET', 'POST'])
 def index():
     init_db()
     if request.method == 'POST':
@@ -47,7 +49,7 @@ def index():
         conn.commit()
         conn.close()
         
-        return redirect(baseurl+'/')
+        return "You have started"
     
     # Fetch all entries to display
     conn = get_db_connection()
@@ -56,7 +58,7 @@ def index():
     
     return render_template('index.html', entries=entries[:10])
 
-@app.route(baseurl+'/finish', methods=['GET', 'POST'])
+@app.route('/finish', methods=['GET', 'POST'])
 def finish():
     init_db()
     now = datetime.datetime.now()

@@ -23,14 +23,16 @@
     <table>
         <tr class="top">
             <th>Name</th>
+            <th>Date</th>
             <th>Start Time</th>
             <th>End Time</th>
             <th>Total Seconds</th>
         {% for entry in entries %}
         </tr>
             <th>{{ entry['name'] }}</th>
-            <th>{{entry['start']}}</th>
-            <th>{{entry['end']}}</th>
+            <th>{{ entry['start'][:10]}}</th>
+            <th>{{entry['start'][-8:]}}</th>
+            <th>{{entry['end'][-8:]}}</th>
             <th>{{entry['time']}}</th>
         <tr>
         {% endfor %}
