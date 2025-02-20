@@ -51,7 +51,7 @@ def index():
     entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall() #This part has been changed
     conn.close()
     
-    return render_template('index.html', entries=entries)
+    return render_template('index.html', entries=entries[:10])
 
 @app.route('/finish', methods=['GET', 'POST'])
 def finish():
@@ -73,14 +73,29 @@ def finish():
         c = now - start
         time = c.total_seconds()
         conn.execute('UPDATE entries SET time = (?), end = (?) WHERE name = (?) AND end IS NULL', (time, now, name, ))
+        rank = conn.execute('''
+        SELECT 
+            (SELECT COUNT(*) 
+            FROM entries AS e2 
+            WHERE e2.time <= e1.time) as row_number, 
+            e1.*
+        FROM entries AS e1
+        WHERE end = ?
+        ORDER BY time
+        '''
+, (now,)).fetchone()
+        rank = rank[0]
         conn.commit()
         conn.close()
+        rank = str(rank)
+        ranking = "You scored number " + rank + "!"
+        return ranking
         
     conn = get_db_connection()
     entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall() #This part has been changed
     conn.close()
 
-    return render_template('index.html', entries=entries)
+    return render_template('finish.html', entries=entries[:10])
 
 if __name__ == '__main__':
     init_db()  # Initialize the database
