@@ -10,33 +10,37 @@
     <title>Flask SQLite App</title>
 </head>
 <body>
-    <h1>Start Page</h1>
-    <h1>Add Entry</h1>
-    <form method="POST">
-        <input type="text" id="name" name="name" placeholder="name" required>
-        <br>
-        <button type="submit">Add</button>
-    </form>
+    <div class="container">
+        <h1 class="fade-in">Starting Page</h1>
+        <h2 class="slide-in">Type in your name to begin!</h2>
+        <form method="POST" class="entry-form">
+            <input type="text" id="name" name="name" placeholder="Enter name" required>
+            <button type="submit" class="button">Add Entry</button>
+        </form>
 
-    <h2>Entries</h2>
-
-    <table>
-        <tr class="top">
-            <th>Name</th>
-            <th>Date</th>
-            <th>Start Time</th>
-            <th>End Time</th>
-            <th>Total Seconds</th>
-        {% for entry in entries %}
-        </tr>
-            <th>{{ entry['name'] }}</th>
-            <th>{{ entry['start']}}</th>
-            <th>{{entry['start']}}</th>
-            <th>{{entry['end']}}</th>
-            <th>{{entry['time']}}</th>
-        <tr>
-        {% endfor %}
-        </tr>
-    </table>
+        <h2 class="slide-in">Current Entries</h2>
+        <table>
+            <thead>
+                <tr class="top">
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Total Seconds</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for entry in entries %}
+                <tr class="table-row">
+                    <td>{{ entry['name'] }}</td>
+                    <td>{{ entry['date'] }}</td>
+                    <td>{{ entry['start'] }}</td>
+                    <td>{{ entry['end'] }}</td>
+                    <td>{{ entry['time'] }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </body>
 </html>

@@ -10,35 +10,41 @@
     <title>Flask SQLite App</title>
 </head>
 <body>
-    <h1>Finishing Page</h1>
-    <h1>Add Entry</h1>
-    <form method="POST">
-        <input type="text" id="name" name="name" placeholder="name" required>
-        <br>
-        <button type="submit">Add</button>
-    </form>
+    <div class="container">
+        <h1 class="fade-in">Finishing Page</h1>
+        <h2 class="slide-in">Finish your timer by clicking your name!</h2>
 
-    <h2>Entries</h2>
+        <h2 class="slide-in">Current Entries</h2>
+        <table>
+            <thead>
+                <tr class="top">
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Total Seconds</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for entry in entries %}
+                <tr class="table-row">
+                    <td>{{ entry['name'] }}</td>
+                    <td>{{ entry['date'] }}</td>
+                    <td>{{ entry['start'] }}</td>
+                    <td>{{ entry['end'] }}</td>
+                    <td>{{ entry['time'] }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('finish') }}">
+                            <input type="hidden" name="name" value="{{ entry['name'] }}">
+                            <button type="submit" class="button">Finish</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
 
-    <table>
-        <tr class="top">
-            <th>Name</th>
-            <th>Date</th>
-            <th>Start Time</th>
-            <th>End Time</th>
-            <th>Total Seconds</th>
-        {% for entry in entries %}
-        </tr>
-            <th>{{ entry['name'] }}</th>
-            <th>{{ entry['start']}}</th>
-            <th>{{entry['start']}}</th>
-            <th>{{entry['end']}}</th>
-            <th>{{entry['time']}}</th>
-        <tr>
-        {% endfor %}
-        </tr>
-    </table>
-
-    <h1>{{ranking}}</h1>
+    </div>
 </body>
 </html>

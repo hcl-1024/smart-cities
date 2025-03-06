@@ -1,11 +1,9 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 import datetime
 
-
 baseurl = "/smartcities"
 app = Flask(__name__, static_url_path=baseurl)
-
 
 # Function to connect to the database
 def get_db_connection():
@@ -36,7 +34,7 @@ def index():
         now = datetime.datetime.now()
         now = now.strftime('%Y-%m-%d %H:%M:%S')
 
-        # Insert the new entry into the database
+
         conn = get_db_connection()
 
         repeat = conn.execute('SELECT * FROM entries WHERE name = (?) AND end IS NULL', (name,)).fetchone()
@@ -47,14 +45,26 @@ def index():
         conn.commit()
         conn.close()
         
-        return "You have started"
+
+        return redirect(url_for('timer', name=name))
     
-    # Fetch all entries to display
+
     conn = get_db_connection()
-    entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall() #This part has been changed
+    entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall()
     conn.close()
     
     return render_template('index.html', entries=entries[:10])
+
+@app.route(baseurl + '/timer/<name>', methods=['GET'])
+def timer(name):
+    conn = get_db_connection()
+    entry = conn.execute('SELECT * FROM entries WHERE name = (?) AND end IS NULL', (name,)).fetchone()
+    conn.close()
+    
+    if not entry:
+        return "No active timer found for this user."
+
+    return render_template('timer.html', name=name, start_time=entry['start'])
 
 @app.route(baseurl + '/finish', methods=['GET', 'POST'])
 def finish():
@@ -85,8 +95,7 @@ def finish():
         FROM entries AS e1
         WHERE end = ?
         ORDER BY time
-        '''
-, (now,)).fetchone()
+        ''', (now,)).fetchone()
         rank = rank[0]
         conn.commit()
         conn.close()
@@ -95,11 +104,11 @@ def finish():
         return ranking
         
     conn = get_db_connection()
-    entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall() #This part has been changed
+    entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall()
     conn.close()
 
     return render_template('finish.html', entries=entries[:10])
 
 if __name__ == '__main__':
-    init_db()  # Initialize the database
+    init_db()  
     app.run(debug=True)
