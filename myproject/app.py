@@ -100,14 +100,17 @@ def finish():
         conn.commit()
         conn.close()
         rank = str(rank)
-        ranking = "You scored number " + rank + "!"
-        return ranking
+        return redirect(url_for('end', rank=rank))
         
     conn = get_db_connection()
     entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall()
     conn.close()
 
     return render_template('finish.html', entries=entries[:10])
+
+@app.route(baseurl + '/end/<rank>')
+def end(rank):
+    return render_template('end.html', rank=rank)
 
 if __name__ == '__main__':
     init_db()  
