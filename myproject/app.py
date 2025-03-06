@@ -77,7 +77,7 @@ def finish():
         conn = get_db_connection()
         exist = conn.execute('SELECT * FROM entries WHERE name = (?) AND end IS NULL', (name,)).fetchone()
         if(not exist):
-            return "Sorry, this user does not exist or you need to make a new account after you've finished before! "
+            return "Sorry, you need to make a new account after you've finished before! "
 
         start_time = conn.execute('SELECT * FROM entries WHERE name = (?) AND end IS NULL', (name,)).fetchone()
         start_time = start_time[2]

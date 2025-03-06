@@ -1,34 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Timer for {{ name }}</title>
-    <script>
-        let startTime = new Date("{{ start_time }}").getTime();
-        let timerInterval;
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles/timer.css') }}">
+   <title>Timer for {{ name }}</title>
+   <script>
+       let startTime = new Date("{{ start_time }}").getTime();
+       let timerInterval;
 
-        function startTimer() {
-            timerInterval = setInterval(function() {
-                let now = new Date().getTime();
-                let distance = now - startTime;
 
-                // Time calculations for hours, minutes and seconds
-                let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+       function startTimer() {
+           timerInterval = setInterval(function() {
+               let now = new Date().getTime();
+               let distance = now - startTime;
 
-                // Display the result
-                document.getElementById("timer").innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
 
-            }, 1000);
-        }
+               let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+               let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+               let seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        window.onload = startTimer;
-    </script>
+
+            
+               document.getElementById("timer").innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
+
+
+           }, 1000);
+       }
+
+
+       function createConfetti() {
+           const colors = ['#ffcc00', '#ff5733', '#33ff57', '#3357ff', '#ff33a1'];
+           for (let i = 0; i < 100; i++) {
+               const confetti = document.createElement('div');
+               confetti.classList.add('confetti');
+               confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+               confetti.style.width = Math.random() * 10 + 5 + 'px';
+               confetti.style.height = Math.random() * 10 + 5 + 'px';
+               confetti.style.left = Math.random() * 100 + 'vw';
+               confetti.style.top = '-10px';
+               confetti.style.animationDuration = '3s';
+               confetti.style.animationDelay = Math.random() * 0.5 + 's';
+               document.body.appendChild(confetti);
+           }
+       }
+
+
+       window.onload = function() {
+           startTimer();
+           createConfetti();
+       };
+   </script>
 </head>
 <body>
-    <h1>Timer for {{ name }}</h1>
-    <div id="timer" style="font-size: 2em; margin-top: 20px;"></div>
+   <div class="container">
+       <h1>Timer for {{ name }}</h1>
+       <div id="timer" class="timer-display"></div>
+   </div>
 </body>
 </html>

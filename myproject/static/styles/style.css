@@ -1,4 +1,6 @@
 /* Reset default margin and padding */
+
+
 body, h1, h2, ul, li, form {
     margin: 0;
     padding: 0;
@@ -6,7 +8,7 @@ body, h1, h2, ul, li, form {
 
 /* Center the heading */
 h1 {
-    font-family: "DM Serif Text", serif;
+    font-family: "Ubuntu", sans-serif;
     text-align: center;
     margin-top: 20px;
 }
@@ -46,27 +48,23 @@ h2 {
 }
 
 table {
-    border-collapse: collapse;
-    width: 100%;
-    margin-top: 10px;
+    width: 50%; /* Set the width of the table */
+    margin: 0 auto; /* Center the table horizontally */
+    border-collapse: collapse; /* Collapse table borders */
 }
 
 th, td {
-    border: 1px solid black;
-    padding: 8px;
-    text-align: left;
+    padding: 8px; /* Add padding to table cells */
+    text-align: left; /* Align text to the left in cells */
 }
 
 th {
-    font-weight: bold;
+    background-color: #f2f2f2; /* Add a background color to table header cells */
 }
 
-tr.top th {
-    border-bottom: 2px solid black;
-}
-
-tr:not(.top) th {
-    font-weight: normal;
+td {
+    border: 1px solid #ddd; /* Add borders to table data cells */
+    width: 50px; /* Set the width of table data cells */
 }
 
 /* Responsive styles */
@@ -79,3 +77,60 @@ tr:not(.top) th {
 .container {
     text-align: center;
 }
+
+.table {
+    margin-top: 10px
+}
+
+img {
+    margin-top: 30px;
+}
+
+.ubuntu-light {
+    font-family: "Ubuntu", sans-serif;
+    font-weight: 300;
+    font-style: normal;
+  }
+  
+  .ubuntu-regular {
+    font-family: "Ubuntu", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+  }
+  
+  .ubuntu-medium {
+    font-family: "Ubuntu", sans-serif;
+    font-weight: 500;
+    font-style: normal;
+  }
+  
+  .ubuntu-bold {
+    font-family: "Ubuntu", sans-serif;
+    font-weight: 700;
+    font-style: normal;
+  }
+  
+  .ubuntu-light-italic {
+    font-family: "Ubuntu", sans-serif;
+    font-weight: 300;
+    font-style: italic;
+  }
+  
+  .ubuntu-regular-italic {
+    font-family: "Ubuntu", sans-serif;
+    font-weight: 400;
+    font-style: italic;
+  }
+  
+  .ubuntu-medium-italic {
+    font-family: "Ubuntu", sans-serif;
+    font-weight: 500;
+    font-style: italic;
+  }
+  
+  .ubuntu-bold-italic {
+    font-family: "Ubuntu", sans-serif;
+    font-weight: 700;
+    font-style: italic;
+  }
+  
