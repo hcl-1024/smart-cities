@@ -11,6 +11,7 @@
 </head>
 <body>
     <div class="container">
+        <img src="images/logo.png" alt="ISF Logo">
         <h1 class="fade-in">Finishing Page</h1>
         <h2 class="slide-in">Finish your timer by clicking your name!</h2>
 
@@ -19,9 +20,6 @@
             <thead>
                 <tr class="top">
                     <th>Name</th>
-                    <th>Date</th>
-                    <th>Start Time</th>
-                    <th>End Time</th>
                     <th>Total Seconds</th>
                     <th>Action</th>
                 </tr>
@@ -30,9 +28,6 @@
             {% for entry in entries %}
                 <tr class="table-row">
                     <td>{{ entry['name'] }}</td>
-                    <td>{{ entry['date'] }}</td>
-                    <td>{{ entry['start'] }}</td>
-                    <td>{{ entry['end'] }}</td>
                     <td>{{ entry['time'] }}</td>
                     <td>
                         <form method="POST" action="{{ url_for('finish') }}">

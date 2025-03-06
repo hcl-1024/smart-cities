@@ -11,6 +11,7 @@
 </head>
 <body>
     <div class="container">
+        <img src="images/logo.png" alt="ISF Logo">
         <h1 class="fade-in">Starting Page</h1>
         <h2 class="slide-in">Type in your name to begin!</h2>
         <form method="POST" class="entry-form">
@@ -23,9 +24,6 @@
             <thead>
                 <tr class="top">
                     <th>Name</th>
-                    <th>Date</th>
-                    <th>Start Time</th>
-                    <th>End Time</th>
                     <th>Total Seconds</th>
                 </tr>
             </thead>
@@ -33,9 +31,6 @@
             {% for entry in entries %}
                 <tr class="table-row">
                     <td>{{ entry['name'] }}</td>
-                    <td>{{ entry['date'] }}</td>
-                    <td>{{ entry['start'] }}</td>
-                    <td>{{ entry['end'] }}</td>
                     <td>{{ entry['time'] }}</td>
                 </tr>
             {% endfor %}

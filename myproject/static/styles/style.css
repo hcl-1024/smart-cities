@@ -75,3 +75,7 @@ tr:not(.top) th {
         width: 100%;
     }
 }
+
+.container {
+    text-align: center;
+}
