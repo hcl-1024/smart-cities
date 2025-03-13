@@ -23,12 +23,16 @@
        }
        window.onload = function() {
            createConfetti();
+           setTimeout(function() {
+            window.location.href = "{{url_for('index')}}"
+           }, 5000)
        };
    </script>
 </head>
 <body>
    <div class="container">
        <h1>You Scored Number {{rank}}! </h1>
+       <p>You will be redirected shortly... </p>
    </div>
 </body>
 </html>

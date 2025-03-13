@@ -10,7 +10,7 @@
     <title>Flask SQLite App</title>
     <style>
         .background-image {
-            background-image: url('{{ url_for("static", filename="images/bkg.jpg") }}');
+            background-image: url('{{ url_for("static", filename="images/bkg.png") }}');
             background-size: cover;
             background-repeat: no-repeat;
             background-position: center;
@@ -23,8 +23,11 @@
     <div class="container">
         <div class="background-image ubuntu-regular">
         <img src="images/logo.png" alt="ISF Logo">
-        <h1 class="fade-in">Starting Page</h1>
-        <h2 class="slide-in">Type in your name to begin!</h2>
+        <h1 class="fade-in ubuntu-regular">Starting Page</h1>
+        <h2 class="slide-in  ubuntu-regular">Type in your name to begin!</h2>
+        <h2><a href="{{ url_for('rank') }}">
+            <button>Go to Full Ranking</button>
+        </a></h2>
         </div>
         <form method="POST" class="entry-form">
             <input type="text" id="name" name="name" placeholder="Enter name" required>

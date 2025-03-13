@@ -37,6 +37,8 @@ button:hover {
 h2 {
     text-align: center;
     margin-top: 20px;
+    color: white;
+    font-family: "DM Serif Text", serif;
 }
 
 table {

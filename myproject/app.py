@@ -112,6 +112,15 @@ def finish():
 def end(rank):
     return render_template('end.html', rank=rank)
 
+@app.route(baseurl + '/rank')
+def rank():
+    init_db()
+    conn = get_db_connection()
+    entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall()
+    conn.close()
+    
+    return render_template('rank.html', entries=entries)
+
 if __name__ == '__main__':
     init_db()  
     app.run(debug=True)

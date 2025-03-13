@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Text:ital@0;1&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
+    <title>Flask SQLite App</title>
+    <style>
+        .background-image {
+            background-image: url('{{ url_for("static", filename="images/bkg.png") }}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            height: 500px; /* Set a height for the element */
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="background-image ubuntu-regular">
+        <img src="images/logo.png" alt="ISF Logo">
+        <h1 class="fade-in">Rank</h1>
+        </div>
+
+        <h2 class="slide-in ubuntu-regular">Current Members</h2>
+        <div class="table">
+        <table class="ubuntu-regular">
+            <thead>
+                <tr class="top">
+                    <th>Name</th>
+                    <th>Total Seconds</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for entry in entries %}
+                <tr class="table-row">
+                    <td>{{ entry['name'] }}</td>
+                    <td>{{ entry['time'] }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</body>
+</html>
