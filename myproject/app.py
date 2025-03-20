@@ -100,7 +100,8 @@ def finish():
         conn.commit()
         conn.close()
         rank = str(rank)
-        return redirect(url_for('end', rank=rank))
+        print(type(time))
+        return redirect(url_for('end', rank=rank, sec=time))
         
     conn = get_db_connection()
     entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall()
@@ -108,9 +109,19 @@ def finish():
 
     return render_template('finish.html', entries=entries[:10])
 
-@app.route(baseurl + '/end/<rank>')
-def end(rank):
-    return render_template('end.html', rank=rank)
+@app.route(baseurl + '/end/<int:rank>/<int:sec>')
+def end(rank, sec):
+    def calculate_carbon_emissions(time_minutes):
+    # Calculate distance based on time and average speed
+        distance_km = (time_minutes / 60) * 30
+    
+    # Calculate carbon emissions for the trip
+        carbon_emissions = distance_km * 0.2
+        return carbon_emissions
+
+    carbon = calculate_carbon_emissions(sec)
+    carbon = round(carbon, 0)
+    return render_template('end.html', rank=rank, carbon=carbon)
 
 @app.route(baseurl + '/rank')
 def rank():
