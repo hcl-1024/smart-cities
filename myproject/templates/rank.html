@@ -32,14 +32,14 @@
             <thead>
                 <tr class="top">
                     <th>Name</th>
-                    <th>Total Seconds</th>
+                    <th>Total Time</th>
                 </tr>
             </thead>
             <tbody>
             {% for entry in entries %}
                 <tr class="table-row">
                     <td>{{ entry['name'] }}</td>
-                    <td>{{ entry['time'] }}</td>
+                    <td>{{ entry['time'] // 60 }}:{{ entry['time'] % 60 }}</td>
                 </tr>
             {% endfor %}
             </tbody>
