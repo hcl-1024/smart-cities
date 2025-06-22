@@ -1,137 +1,223 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, request, session, jsonify
 import sqlite3
-import datetime
+import time
+import math
+import os
 
-baseurl = "/smartcities"
-app = Flask(__name__, static_url_path=baseurl)
+app = Flask(__name__)
+app.secret_key = 'your_secret_key_here'
+DATABASE = 'gps_timer.db'
 
-# Function to connect to the database
-def get_db_connection():
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+# GPS coordinates (customize these with your specific locations)
+START_GPS = (37.7749, -122.4194)  # San Francisco coordinates
+END_GPS = (34.0522, -118.2437)    # Los Angeles coordinates
+GPS_THRESHOLD = 0.01  # Approximately 1.1 km (adjust for your needs)
 
-# Create the database and table if it doesn't exist
+# Initialize database
 def init_db():
-    conn = get_db_connection()
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS entries (
+    with sqlite3.connect(DATABASE) as conn:
+        conn.execute('''
+        CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            start TEXT NOT NULL, 
-            end TEXT, 
-            time INTEGER
+            fingerprint TEXT NOT NULL UNIQUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    ''')
-    conn.commit()
-    conn.close()
-
-@app.route(baseurl + '/', methods=['GET', 'POST'])
-def index():
-    init_db()
-    if request.method == 'POST':
-        name = request.form['name']
-        now = datetime.datetime.now()
-        now = now.strftime('%Y-%m-%d %H:%M:%S')
-
-
-        conn = get_db_connection()
-
-        repeat = conn.execute('SELECT * FROM entries WHERE name = (?) AND end IS NULL', (name,)).fetchone()
-        if(repeat): 
-            return "Someone has already entered that name! "
-
-        conn.execute('INSERT INTO entries (name, start) VALUES (?, ?)', (name, now))
-        conn.commit()
-        conn.close()
+        ''')
         
-
-        return redirect(url_for('timer', name=name))
-    
-
-    conn = get_db_connection()
-    entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall()
-    conn.close()
-    
-    return render_template('index.html', entries=entries[:10])
-
-@app.route(baseurl + '/timer/<name>', methods=['GET'])
-def timer(name):
-    conn = get_db_connection()
-    entry = conn.execute('SELECT * FROM entries WHERE name = (?) AND end IS NULL', (name,)).fetchone()
-    conn.close()
-    
-    if not entry:
-        return "No active timer found for this user."
-
-    return render_template('timer.html', name=name, start_time=entry['start'])
-
-@app.route(baseurl + '/finish', methods=['GET', 'POST'])
-def finish():
-    init_db()
-    now = datetime.datetime.now()
-    now = now.strftime('%Y-%m-%d %H:%M:%S')
-
-    if request.method == "POST": 
-        name = request.form['name']
-        conn = get_db_connection()
-        exist = conn.execute('SELECT * FROM entries WHERE name = (?) AND end IS NULL', (name,)).fetchone()
-        if(not exist):
-            return "Sorry, you need to make a new account after you've finished before! "
-
-        start_time = conn.execute('SELECT * FROM entries WHERE name = (?) AND end IS NULL', (name,)).fetchone()
-        start_time = start_time[2]
-        start = datetime.datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-        now = datetime.datetime.strptime(now, "%Y-%m-%d %H:%M:%S")
-        c = now - start
-        time = c.total_seconds()
-        conn.execute('UPDATE entries SET time = (?), end = (?) WHERE name = (?) AND end IS NULL', (time, now, name, ))
-        rank = conn.execute('''
-        SELECT 
-            (SELECT COUNT(*) 
-            FROM entries AS e2 
-            WHERE e2.time <= e1.time) as row_number, 
-            e1.*
-        FROM entries AS e1
-        WHERE end = ?
-        ORDER BY time
-        ''', (now,)).fetchone()
-        rank = rank[0]
+        conn.execute('''
+        CREATE TABLE IF NOT EXISTS timer_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            start_time TIMESTAMP,
+            end_time TIMESTAMP,
+            elapsed_time REAL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        ''')
         conn.commit()
-        conn.close()
-        rank = str(rank)
-        print(type(time))
-        return redirect(url_for('end', rank=rank, sec=time))
-        
-    conn = get_db_connection()
-    entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall()
-    conn.close()
 
-    return render_template('finish.html', entries=entries[:10])
-
-@app.route(baseurl + '/end/<int:rank>/<int:sec>')
-def end(rank, sec):
-    def calculate_carbon_emissions(time_minutes):
-    # Calculate distance based on time and average speed
-        distance_km = (time_minutes / 60) * 30
-    
-    # Calculate carbon emissions for the trip
-        carbon_emissions = distance_km * 0.2
-        return carbon_emissions
-
-    carbon = calculate_carbon_emissions(sec)
-    carbon = round(carbon, 0)
-    return render_template('end.html', rank=rank, carbon=carbon)
-
-@app.route(baseurl + '/rank')
-def rank():
+# Create database if not exists
+if not os.path.exists(DATABASE):
     init_db()
-    conn = get_db_connection()
-    entries = conn.execute('SELECT * FROM entries ORDER BY time ASC').fetchall()
-    conn.close()
+
+def haversine(lat1, lon1, lat2, lon2):
+    """Calculate distance between two GPS points in kilometers"""
+    R = 6371  # Earth radius in km
     
-    return render_template('rank.html', entries=entries)
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    
+    a = (math.sin(dlat/2) * math.sin(dlat/2) +
+         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * 
+         math.sin(dlon/2) * math.sin(dlon/2))
+    
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
+
+def is_near_location(current_lat, current_lon, target_lat, target_lon, threshold_km):
+    """Check if current location is within threshold distance of target"""
+    distance = haversine(current_lat, current_lon, target_lat, target_lon)
+    return distance <= threshold_km
+
+def get_user_id(fingerprint):
+    """Get or create user ID based on fingerprint"""
+    with sqlite3.connect(DATABASE) as conn:
+        cursor = conn.cursor()
+        
+        # Try to get existing user
+        cursor.execute("SELECT id FROM users WHERE fingerprint = ?", (fingerprint,))
+        user = cursor.fetchone()
+        
+        if user:
+            return user[0]
+        else:
+            # Create new user
+            cursor.execute("INSERT INTO users (fingerprint) VALUES (?)", (fingerprint,))
+            conn.commit()
+            return cursor.lastrowid
+
+@app.route('/check-location', methods=['POST'])
+def check_location():
+    """Endpoint to check if user is at start/end location and manage timer"""
+    # Get current location from request
+    data = request.json
+    current_lat = data.get('latitude')
+    current_lon = data.get('longitude')
+    
+    if not current_lat or not current_lon:
+        return jsonify({'error': 'Missing coordinates'}), 400
+    
+    # Create fingerprint from IP + User-Agent
+    fingerprint = f"{request.remote_addr}-{request.user_agent.string}"
+    
+    # Get or create user
+    user_id = get_user_id(fingerprint)
+    
+    # Check locations
+    response = {'action': 'none'}
+    
+    # Check if at START location
+    if is_near_location(current_lat, current_lon, *START_GPS, GPS_THRESHOLD):
+        with sqlite3.connect(DATABASE) as conn:
+            cursor = conn.cursor()
+            
+            # Check for existing active timer
+            cursor.execute('''
+            SELECT id FROM timer_events 
+            WHERE user_id = ? AND end_time IS NULL
+            ''', (user_id,))
+            active_timer = cursor.fetchone()
+            
+            if not active_timer:
+                # Start new timer
+                start_time = time.time()
+                cursor.execute('''
+                INSERT INTO timer_events (user_id, start_time)
+                VALUES (?, ?)
+                ''', (user_id, start_time))
+                conn.commit()
+                response = {
+                    'action': 'timer_started',
+                    'message': 'Timer started! Go to endpoint location'
+                }
+            else:
+                response = {
+                    'action': 'already_started',
+                    'message': 'Timer already running'
+                }
+    
+    # Check if at END location
+    elif is_near_location(current_lat, current_lon, *END_GPS, GPS_THRESHOLD):
+        with sqlite3.connect(DATABASE) as conn:
+            cursor = conn.cursor()
+            
+            # Get active timer
+            cursor.execute('''
+            SELECT id, start_time FROM timer_events 
+            WHERE user_id = ? AND end_time IS NULL
+            ORDER BY start_time DESC LIMIT 1
+            ''', (user_id,))
+            active_timer = cursor.fetchone()
+            
+            if active_timer:
+                # Stop the timer
+                timer_id, start_time = active_timer
+                end_time = time.time()
+                elapsed = end_time - start_time
+                
+                # Update database
+                cursor.execute('''
+                UPDATE timer_events 
+                SET end_time = ?, elapsed_time = ?
+                WHERE id = ?
+                ''', (end_time, elapsed, timer_id))
+                conn.commit()
+                
+                response = {
+                    'action': 'timer_stopped',
+                    'message': f'Timer stopped! Elapsed time: {elapsed:.2f} seconds',
+                    'elapsed_time': elapsed
+                }
+            else:
+                response = {
+                    'action': 'no_active_timer',
+                    'message': 'No active timer to stop'
+                }
+    
+    return jsonify(response)
+
+@app.route('/user-history/<int:user_id>')
+def user_history(user_id):
+    """Get timer history for a specific user"""
+    with sqlite3.connect(DATABASE) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get user info
+        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get timer events
+        cursor.execute('''
+        SELECT id, 
+               datetime(start_time, 'unixepoch') AS start_time, 
+               datetime(end_time, 'unixepoch') AS end_time,
+               elapsed_time
+        FROM timer_events 
+        WHERE user_id = ?
+        ORDER BY start_time DESC
+        ''', (user_id,))
+        events = cursor.fetchall()
+    
+    return jsonify({
+        'user_id': user['id'],
+        'created_at': user['created_at'],
+        'events': [dict(event) for event in events]
+    })
+
+@app.route('/all-history')
+def all_history():
+    """Get all timer events from all users"""
+    with sqlite3.connect(DATABASE) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        SELECT u.id AS user_id, u.created_at,
+               t.id AS event_id, 
+               datetime(t.start_time, 'unixepoch') AS start_time,
+               datetime(t.end_time, 'unixepoch') AS end_time,
+               t.elapsed_time
+        FROM users u
+        JOIN timer_events t ON u.id = t.user_id
+        ORDER BY t.start_time DESC
+        ''')
+        events = cursor.fetchall()
+    
+    return jsonify([dict(event) for event in events])
 
 if __name__ == '__main__':
-    init_db()  
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
