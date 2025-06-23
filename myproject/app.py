@@ -4,7 +4,8 @@ import time
 import math
 import os
 
-app = Flask(__name__)
+baseurl = "/smartcities"
+app = Flask(__name__, static_url_path=baseurl)
 app.secret_key = 'your_secret_key_here'
 DATABASE = 'gps_timer.db'
 
@@ -76,8 +77,9 @@ def get_user_id(fingerprint):
             conn.commit()
             return cursor.lastrowid
 
-@app.route('/check-location', methods=['POST'])
-def check_location():
+#check how each url matches
+@app.route(baseurl + '/check-location-starting', methods=['POST'])
+def check_location_starting():
     """Endpoint to check if user is at start/end location and manage timer"""
     # Get current location from request
     data = request.json
@@ -120,14 +122,38 @@ def check_location():
                     'action': 'timer_started',
                     'message': 'Timer started! Go to endpoint location'
                 }
+                return redirect(url_for('check-location-ending'))
             else:
                 response = {
                     'action': 'already_started',
                     'message': 'Timer already running'
                 }
     
+    # look for how to redirect
+    return jsonify(response)
+
+@app.route(baseurl + '/check-location-ending', methods=['POST'])
+def check_location_ending():
+    """Endpoint to check if user is at start/end location and manage timer"""
+    # Get current location from request
+    data = request.json
+    current_lat = data.get('latitude')
+    current_lon = data.get('longitude')
+    
+    if not current_lat or not current_lon:
+        return jsonify({'error': 'Missing coordinates'}), 400
+    
+    # Create fingerprint from IP + User-Agent
+    fingerprint = f"{request.remote_addr}-{request.user_agent.string}"
+    
+    # Get or create user
+    user_id = get_user_id(fingerprint)
+    
+    # Check locations
+    response = {'action': 'none'}
+
     # Check if at END location
-    elif is_near_location(current_lat, current_lon, *END_GPS, GPS_THRESHOLD):
+    if is_near_location(current_lat, current_lon, *END_GPS, GPS_THRESHOLD):
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
             
@@ -152,21 +178,30 @@ def check_location():
                 WHERE id = ?
                 ''', (end_time, elapsed, timer_id))
                 conn.commit()
+
+                rank = conn.execute('''
+                SELECT 
+                (SELECT COUNT(*) 
+                FROM entries AS e2 
+                WHERE e2.elapsed_time <= e1.elapsed_time) as row_number, 
+                e1.*
+                FROM entries AS e1
+                WHERE end_time = ?
+                ORDER BY time
+                ''', (now,)).fetchone()
+                rank = rank[0]
                 
-                response = {
-                    'action': 'timer_stopped',
-                    'message': f'Timer stopped! Elapsed time: {elapsed:.2f} seconds',
-                    'elapsed_time': elapsed
-                }
+                return redirect(url_for('result-page'), rank=rank, time=elapsed:.2f)
             else:
                 response = {
                     'action': 'no_active_timer',
                     'message': 'No active timer to stop'
                 }
-    
     return jsonify(response)
 
-@app.route('/user-history/<int:user_id>')
+    
+
+@app.route(baseurl + '/user-history/<int:user_id>')
 def user_history(user_id):
     """Get timer history for a specific user"""
     with sqlite3.connect(DATABASE) as conn:
@@ -198,7 +233,7 @@ def user_history(user_id):
         'events': [dict(event) for event in events]
     })
 
-@app.route('/all-history')
+@app.route(baseurl + '/all-history')
 def all_history():
     """Get all timer events from all users"""
     with sqlite3.connect(DATABASE) as conn:
@@ -217,7 +252,24 @@ def all_history():
         ''')
         events = cursor.fetchall()
     
+    #return the template
     return jsonify([dict(event) for event in events])
+
+@app.route(baseurl + '/result-page/<int:rank>/<int:time>')
+def result_page():
+    def calculate_carbon_emissions(time_minutes):
+    # Calculate distance based on time and average speed
+        distance_km = (time_minutes / 60) * 30
+    
+    # Calculate carbon emissions for the trip
+        carbon_emissions = distance_km * 0.2
+        return carbon_emissions
+
+    carbon = calculate_carbon_emissions(sec)
+    carbon = round(carbon, 0)
+    return render_template('result-page.html', rank=rank, carbon=carbon)
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

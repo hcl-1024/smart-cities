@@ -1,3 +1,4 @@
+original backend
 from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 import datetime
@@ -135,3 +136,65 @@ def rank():
 if __name__ == '__main__':
     init_db()  
     app.run(debug=True)
+
+finish page
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles/finish.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Text:ital@0;1&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
+    <title>Flask SQLite App</title>
+    <style>
+        .background-image {
+            background-image: url('{{ url_for("static", filename="images/bkg1.png") }}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            height: 500px; /* Set a height for the element */
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="background-image">
+            <img src="images/logo.png" alt="ISF Logo">
+            <h1 class="fade-in ubuntu-regular">Finishing Page</h1>
+            <h2 class="slide-in ubuntu-regular">Finish your timer by clicking "finish" next to your name! !</h2>
+            <h2><a href="{{ url_for('rank') }}"><button>Go to Full Ranking</button></a></h2>
+        </div>
+
+        <h2 class="slide-in ubuntu-regular">Current Entries</h2>
+        <div class="table">
+        <table class="ubuntu-regular">
+            <thead>
+                <tr class="top">
+                    <th>Name</th>
+                    <th>Total Seconds</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for entry in entries %}
+                <tr class="table-row">
+                    <td>{{ entry['name'] }}</td>
+                    <td>{{ entry['time'] // 60 }}:{{ entry['time'] % 60 }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('finish') }}">
+                            <input type="hidden" name="name" value="{{ entry['name'] }}">
+                            <button type="submit" class="button">Finish</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    </div>
+</body>
+</html>

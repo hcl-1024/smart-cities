@@ -38,8 +38,8 @@
             <tbody>
             {% for entry in entries %}
                 <tr class="table-row">
-                    <td>{{ entry['name'] }}</td>
-                    <td>{{ entry['time'] // 60 }}:{{ entry['time'] % 60 }}</td>
+                    <td>{{ entry['user_id'] }}</td>
+                    <td>{{ entry['elapsed_time'] // 60 }}:{{ entry['elapsed_time'] % 60 }}</td>
                 </tr>
             {% endfor %}
             </tbody>
