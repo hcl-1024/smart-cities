@@ -130,7 +130,7 @@ def check_location_starting():
                 }
     
     # look for how to redirect
-    return jsonify(response)
+    return render_template("check-location-starting.html")
 
 @app.route(baseurl + '/check-location-ending', methods=['POST'])
 def check_location_ending():
@@ -197,7 +197,7 @@ def check_location_ending():
                     'action': 'no_active_timer',
                     'message': 'No active timer to stop'
                 }
-    return jsonify(response)
+    return render_template("check_location_ending.html")
 
     
 
@@ -227,11 +227,7 @@ def user_history(user_id):
         ''', (user_id,))
         events = cursor.fetchall()
     
-    return jsonify({
-        'user_id': user['id'],
-        'created_at': user['created_at'],
-        'events': [dict(event) for event in events]
-    })
+    return render_template("user-history.html")
 
 @app.route(baseurl + '/all-history')
 def all_history():
@@ -253,7 +249,7 @@ def all_history():
         events = cursor.fetchall()
     
     #return the template
-    return jsonify([dict(event) for event in events])
+    return render_template("all-history.html")
 
 @app.route(baseurl + '/result-page/<int:rank>/<int:time>')
 def result_page():
