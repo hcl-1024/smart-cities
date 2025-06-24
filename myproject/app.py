@@ -227,7 +227,7 @@ def user_history(user_id):
         ''', (user_id,))
         events = cursor.fetchall()
     
-    return render_template("user-history.html")
+    return render_template("user-history.html", entries=events)
 
 @app.route(baseurl + '/all-history')
 def all_history():
@@ -249,7 +249,7 @@ def all_history():
         events = cursor.fetchall()
     
     #return the template
-    return render_template("all-history.html")
+    return render_template("all-history.html", entries=events)
 
 @app.route(baseurl + '/result-page/<int:rank>/<int:time>')
 def result_page():
