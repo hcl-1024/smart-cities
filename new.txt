@@ -7,17 +7,16 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
-baseurl = "/smartcities"
-app = Flask(__name__, static_url_path=baseurl)
+app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 DATABASE = 'gps_timer.db'
 
-# GPS coordinates (customize these with your specific locations)
-START_GPS = (37.7749, -122.4194)  # San Francisco coordinates
-END_GPS = (34.0522, -118.2437)    # Los Angeles coordinates
-GPS_THRESHOLD = 0.01  # Approximately 1.1 km (adjust for your needs)
+# GPS coordinates
+START_GPS = (37.7749, -122.4194)  # Start coordinates
+END_GPS = (34.0522, -118.2437)    # End coordinates
+GPS_THRESHOLD = 0.01  # Approximately 1.1 km
 
-# Initialize database
+# Initialize database with additional environmental fields
 def init_db():
     with sqlite3.connect(DATABASE) as conn:
         conn.execute('''
@@ -72,15 +71,12 @@ def get_user_id(fingerprint):
     """Get or create user ID based on fingerprint"""
     with sqlite3.connect(DATABASE) as conn:
         cursor = conn.cursor()
-        
-        # Try to get existing user
         cursor.execute("SELECT id FROM users WHERE fingerprint = ?", (fingerprint,))
         user = cursor.fetchone()
         
         if user:
             return user[0]
         else:
-            # Create new user
             cursor.execute("INSERT INTO users (fingerprint) VALUES (?)", (fingerprint,))
             conn.commit()
             return cursor.lastrowid
@@ -151,11 +147,10 @@ def get_cluster_rank(event_id):
         except:
             return None, None, None
 
-#check how each url matches
-@app.route(baseurl + '/check-location-starting', methods=['POST'])
-def check_location_starting():
-    """Endpoint to check if user is at start/end location and manage timer"""
-    # Get current location from request
+@app.route('/perform-task', methods=['POST'])
+def perform_task():
+    """Endpoint to record timer events with environmental data"""
+    # Get current location and environmental data
     data = request.json
     current_lat = data.get('latitude')
     current_lon = data.get('longitude')
@@ -171,6 +166,7 @@ def check_location_starting():
     
     # Check locations
     response = {'action': 'none'}
+    event_id = None
     
     # Check if at START location
     if is_near_location(current_lat, current_lon, *START_GPS, GPS_THRESHOLD):
@@ -196,38 +192,14 @@ def check_location_starting():
                     'action': 'timer_started',
                     'message': 'Timer started! Go to endpoint location'
                 }
-                return redirect(url_for('check-location-ending'))
             else:
                 response = {
                     'action': 'already_started',
                     'message': 'Timer already running'
                 }
     
-    # look for how to redirect
-    return render_template("check-location-starting.html")
-
-@app.route(baseurl + '/check-location-ending', methods=['POST'])
-def check_location_ending():
-    """Endpoint to check if user is at start/end location and manage timer"""
-    # Get current location from request
-    data = request.json
-    current_lat = data.get('latitude')
-    current_lon = data.get('longitude')
-    
-    if not current_lat or not current_lon:
-        return jsonify({'error': 'Missing coordinates'}), 400
-    
-    # Create fingerprint from IP + User-Agent
-    fingerprint = f"{request.remote_addr}-{request.user_agent.string}"
-    
-    # Get or create user
-    user_id = get_user_id(fingerprint)
-    
-    # Check locations
-    response = {'action': 'none'}
-
     # Check if at END location
-    if is_near_location(current_lat, current_lon, *END_GPS, GPS_THRESHOLD):
+    elif is_near_location(current_lat, current_lon, *END_GPS, GPS_THRESHOLD):
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
             
@@ -245,35 +217,58 @@ def check_location_ending():
                 end_time = time.time()
                 elapsed = end_time - start_time
                 
-                # Update database
+                # Get environmental data from request
+                temperature = data.get('temperature')
+                precipitation = data.get('precipitation')
+                humidity = data.get('humidity')
+                traffic = data.get('traffic')
+                
+                # Update database with environmental data
                 cursor.execute('''
                 UPDATE timer_events 
-                SET end_time = ?, elapsed_time = ?
+                SET end_time = ?, 
+                    elapsed_time = ?,
+                    temperature = ?,
+                    precipitation = ?,
+                    humidity = ?,
+                    traffic = ?
                 WHERE id = ?
-                ''', (end_time, elapsed, timer_id))
+                ''', (end_time, elapsed, temperature, precipitation, humidity, traffic, timer_id))
                 conn.commit()
-
-                rank = conn.execute('''
-                SELECT 
-                (SELECT COUNT(*) 
-                FROM entries AS e2 
-                WHERE e2.elapsed_time <= e1.elapsed_time) as row_number, 
-                e1.*
-                FROM entries AS e1
-                WHERE end_time = ?
-                ORDER BY time
-                ''', (now,)).fetchone()
-                rank = rank[0]
                 
-                return redirect(url_for('result-page'), rank=rank, time=elapsed:.2f)
+                # Get cluster ranking
+                rank, cluster_size, percentile = get_cluster_rank(timer_id)
+                
+                response = {
+                    'action': 'timer_stopped',
+                    'message': f'Timer stopped! Elapsed time: {elapsed:.2f} seconds',
+                    'elapsed_time': elapsed,
+                    'environmental_data': {
+                        'temperature': temperature,
+                        'precipitation': precipitation,
+                        'humidity': humidity,
+                        'traffic': traffic
+                    }
+                }
+                
+                # Add ranking info if available
+                if rank is not None:
+                    response['ranking'] = {
+                        'rank': rank,
+                        'cluster_size': cluster_size,
+                        'percentile': percentile,
+                        'message': f'You ranked #{rank} out of {cluster_size} similar conditions'
+                    }
+                
+                event_id = timer_id
             else:
                 response = {
                     'action': 'no_active_timer',
                     'message': 'No active timer to stop'
                 }
-    return render_template("check_location_ending.html")
-
     
+    return jsonify(response)
+
 @app.route('/cluster-rank/<int:event_id>')
 def cluster_rank(event_id):
     """Endpoint to get cluster ranking for a specific event"""
@@ -285,9 +280,15 @@ def cluster_rank(event_id):
             'reason': 'Not enough data or event not found'
         }), 404
     
-    return render_template("cluster-rank.html", rank=rank, cluster_size=cluster_size, percentile=percentile)
+    return jsonify({
+        'event_id': event_id,
+        'rank': rank,
+        'cluster_size': cluster_size,
+        'percentile': percentile,
+        'message': f'Ranked #{rank} out of {cluster_size} similar conditions'
+    })
 
-@app.route(baseurl + '/user-history/<int:user_id>')
+@app.route('/user-history/<int:user_id>')
 def user_history(user_id):
     """Get timer history for a specific user"""
     with sqlite3.connect(DATABASE) as conn:
@@ -306,16 +307,24 @@ def user_history(user_id):
         SELECT id, 
                datetime(start_time, 'unixepoch') AS start_time, 
                datetime(end_time, 'unixepoch') AS end_time,
-               elapsed_time
+               elapsed_time,
+               temperature,
+               precipitation,
+               humidity,
+               traffic
         FROM timer_events 
         WHERE user_id = ?
         ORDER BY start_time DESC
         ''', (user_id,))
         events = cursor.fetchall()
     
-    return render_template("user-history.html", entries=events)
+    return jsonify({
+        'user_id': user['id'],
+        'created_at': user['created_at'],
+        'events': [dict(event) for event in events]
+    })
 
-@app.route(baseurl + '/all-history')
+@app.route('/all-history')
 def all_history():
     """Get all timer events from all users"""
     with sqlite3.connect(DATABASE) as conn:
@@ -327,31 +336,21 @@ def all_history():
                t.id AS event_id, 
                datetime(t.start_time, 'unixepoch') AS start_time,
                datetime(t.end_time, 'unixepoch') AS end_time,
-               t.elapsed_time
+               t.elapsed_time,
+               t.temperature,
+               t.precipitation,
+               t.humidity,
+               t.traffic
         FROM users u
         JOIN timer_events t ON u.id = t.user_id
         ORDER BY t.start_time DESC
         ''')
         events = cursor.fetchall()
     
-    #return the template
-    return render_template("all-history.html", entries=events)
-
-@app.route(baseurl + '/result-page/<int:rank>/<int:time>')
-def result_page():
-    def calculate_carbon_emissions(time_minutes):
-    # Calculate distance based on time and average speed
-        distance_km = (time_minutes / 60) * 30
-    
-    # Calculate carbon emissions for the trip
-        carbon_emissions = distance_km * 0.2
-        return carbon_emissions
-
-    carbon = calculate_carbon_emissions(sec)
-    carbon = round(carbon, 0)
-    return render_template('result-page.html', rank=rank, carbon=carbon)
-
-
+    return jsonify([dict(event) for event in events])
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Install required packages if missing
+    try:
+        from sklearn.cluster import KMeans
+   
