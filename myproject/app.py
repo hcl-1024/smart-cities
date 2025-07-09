@@ -1,4 +1,4 @@
-from flask import Flask, request, session, jsonify
+from flask import Flask, request, session, jsonify , render_template, redirect, url_for
 import sqlite3
 import time
 import math
@@ -203,7 +203,6 @@ def check_location_starting():
                     'message': 'Timer already running'
                 }
     
-    # look for how to redirect
     return render_template("check-location-starting.html")
 
 @app.route(baseurl + '/check-location-ending', methods=['POST'])
@@ -253,6 +252,7 @@ def check_location_ending():
                 ''', (end_time, elapsed, timer_id))
                 conn.commit()
 
+                now = time.time()
                 rank = conn.execute('''
                 SELECT 
                 (SELECT COUNT(*) 
@@ -264,8 +264,17 @@ def check_location_ending():
                 ORDER BY time
                 ''', (now,)).fetchone()
                 rank = rank[0]
+                event_id = rank["id"]
+
+                rank, cluster_size, percentile = get_cluster_rank(event_id)
+    
+                if rank is None:
+                    return jsonify({
+                    'error': 'Ranking not available',
+                    'reason': 'Not enough data or event not found'
+                    }), 404
                 
-                return redirect(url_for('result-page'), rank=rank, time=elapsed:.2f)
+                return redirect(url_for('result_page', rank=rank, time=round(elapsed, 2), cluster_size=cluster_size, percentile=percentile))
             else:
                 response = {
                     'action': 'no_active_timer',
@@ -274,19 +283,6 @@ def check_location_ending():
     return render_template("check_location_ending.html")
 
     
-@app.route('/cluster-rank/<int:event_id>')
-def cluster_rank(event_id):
-    """Endpoint to get cluster ranking for a specific event"""
-    rank, cluster_size, percentile = get_cluster_rank(event_id)
-    
-    if rank is None:
-        return jsonify({
-            'error': 'Ranking not available',
-            'reason': 'Not enough data or event not found'
-        }), 404
-    
-    return render_template("cluster-rank.html", rank=rank, cluster_size=cluster_size, percentile=percentile)
-
 @app.route(baseurl + '/user-history/<int:user_id>')
 def user_history(user_id):
     """Get timer history for a specific user"""
@@ -337,19 +333,18 @@ def all_history():
     #return the template
     return render_template("all-history.html", entries=events)
 
-@app.route(baseurl + '/result-page/<int:rank>/<int:time>')
-def result_page():
+@app.route(baseurl + '/result-page/<int:rank>/<int:time>/<int:cluster_size>/<float:percentile>')
+def result_page(rank, time, cluster_size, percentile):
     def calculate_carbon_emissions(time_minutes):
-    # Calculate distance based on time and average speed
+        # Calculate distance based on time and average speed
         distance_km = (time_minutes / 60) * 30
-    
-    # Calculate carbon emissions for the trip
+        # Calculate carbon emissions for the trip
         carbon_emissions = distance_km * 0.2
         return carbon_emissions
 
-    carbon = calculate_carbon_emissions(sec)
+    carbon = calculate_carbon_emissions(time)
     carbon = round(carbon, 0)
-    return render_template('result-page.html', rank=rank, carbon=carbon)
+    return render_template('result-page.html', rank=rank, carbon=carbon, time=time, cluster_size=cluster_size, percentile=percentile)
 
 
 
