@@ -21,12 +21,12 @@
                document.body.appendChild(confetti);
            }
        }
-       window.onload = function() {
-           createConfetti();
-           setTimeout(function() {
-            window.location.href = "{{url_for('index')}}"
-           }, 5000)
-       };
+        //window.onload = function() {
+           //createConfetti();
+           //setTimeout(function() {
+            //window.location.href = "{{url_for('check_location_ending')}}"
+           //}, 5000)
+       //};
    </script>
 </head>
 <body>
@@ -34,8 +34,6 @@
        <h1>You Scored Number {{rank}}! </h1>
        <h1>You Saved about {{carbon}}kg of Carbon! </h1>
         <h1>You Used about {{time}} minutes! </h1>
-        <h1>In your cluster of size {{cluster_size}}, you scored the {{percentile}}% percentile</h1>
-       <p>You will be redirected shortly... </p>
    </div>
 </body>
 </html>

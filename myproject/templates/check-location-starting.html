@@ -24,35 +24,12 @@
         <div class="background-image ubuntu-regular">
         <img src="images/logo.png" alt="ISF Logo">
         <h1 class="fade-in ubuntu-regular">Starting Page</h1>
-        <h2 class="slide-in  ubuntu-regular">Type in your name to begin!</h2>
-        <h2><a href="{{ url_for('rank') }}">
+        <h2><a href="{{ url_for('all_history') }}">
             <button>Go to Full Ranking</button>
         </a></h2>
         </div>
-        <form method="POST" class="entry-form">
-            <input type="text" id="name" name="name" placeholder="Enter name" required>
-            <button type="submit" class="button">Add Entry</button>
-        </form>
 
         <h2 class="slide-in ubuntu-regular">Current Entries</h2>
-        <div class="table">
-        <table class="ubuntu-regular">
-            <thead>
-                <tr class="top">
-                    <th>Name</th>
-                    <th>Total Seconds</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for entry in entries %}
-                <tr class="table-row">
-                    <td>{{ entry['name'] }}</td>
-                    <td>{{ entry['time'] // 60 }}:{{ entry['time'] % 60 }}</td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        </div>
-    </div>
+
 </body>
 </html>

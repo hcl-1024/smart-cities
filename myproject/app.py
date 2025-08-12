@@ -1,10 +1,10 @@
+from random import random
 from flask import Flask, request, session, jsonify , render_template, redirect, url_for
 import sqlite3
 import time
 import math
 import os
 import numpy as np
-from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
 baseurl = "/smartcities"
@@ -65,8 +65,9 @@ def haversine(lat1, lon1, lat2, lon2):
 
 def is_near_location(current_lat, current_lon, target_lat, target_lon, threshold_km):
     """Check if current location is within threshold distance of target"""
-    distance = haversine(current_lat, current_lon, target_lat, target_lon)
-    return distance <= threshold_km
+    """distance = haversine(current_lat, current_lon, target_lat, target_lon)
+    return distance <= threshold_km"""
+    return True # Simulate always being near the location for testing
 
 def get_user_id(fingerprint):
     """Get or create user ID based on fingerprint"""
@@ -85,83 +86,19 @@ def get_user_id(fingerprint):
             conn.commit()
             return cursor.lastrowid
 
-def get_cluster_rank(event_id):
-    """Calculate user's rank within their environmental cluster"""
-    with sqlite3.connect(DATABASE) as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        # Get all events with environmental data
-        cursor.execute('''
-        SELECT id, elapsed_time, temperature, precipitation, humidity, traffic
-        FROM timer_events 
-        WHERE temperature IS NOT NULL
-          AND precipitation IS NOT NULL
-          AND humidity IS NOT NULL
-          AND traffic IS NOT NULL
-        ''')
-        events = cursor.fetchall()
-        
-        if len(events) < 5:  # Not enough data for clustering
-            return None, None, None
-        
-        # Prepare data for clustering
-        event_data = []
-        for event in events:
-            event_data.append([
-                event['temperature'],
-                event['precipitation'],
-                event['humidity'],
-                event['traffic']
-            ])
-        
-        # Normalize data
-        scaler = StandardScaler()
-        scaled_data = scaler.fit_transform(event_data)
-        
-        # Cluster events (using elbow method would be better in production)
-        kmeans = KMeans(n_clusters=min(5, len(events)), random_state=0)
-        clusters = kmeans.fit_predict(scaled_data)
-        
-        # Find cluster for our event
-        current_cluster = None
-        for i, event in enumerate(events):
-            if event['id'] == event_id:
-                current_cluster = clusters[i]
-                current_time = event['elapsed_time']
-                break
-        
-        if current_cluster is None:
-            return None, None, None
-        
-        # Get times in the same cluster
-        cluster_times = []
-        for i, cluster in enumerate(clusters):
-            if cluster == current_cluster:
-                cluster_times.append(events[i]['elapsed_time'])
-        
-        # Sort times from fastest to slowest
-        sorted_times = sorted(cluster_times)
-        
-        # Calculate rank and percentile
-        try:
-            rank = sorted_times.index(current_time) + 1
-            percentile = (rank / len(cluster_times)) * 100
-            return rank, len(cluster_times), percentile
-        except:
-            return None, None, None
-
 #check how each url matches
-@app.route(baseurl + '/check-location-starting', methods=['POST'])
+@app.route(baseurl + '/check-location-starting')
 def check_location_starting():
     """Endpoint to check if user is at start/end location and manage timer"""
     # Get current location from request
-    data = request.json
+    """data = request.json
     current_lat = data.get('latitude')
-    current_lon = data.get('longitude')
+    current_lon = data.get('longitude')"""
+
     
-    if not current_lat or not current_lon:
-        return jsonify({'error': 'Missing coordinates'}), 400
+    
+    """if not current_lat or not current_lon:
+        return jsonify({'error': 'Missing coordinates'}), 400"""
     
     # Create fingerprint from IP + User-Agent
     fingerprint = f"{request.remote_addr}-{request.user_agent.string}"
@@ -169,11 +106,8 @@ def check_location_starting():
     # Get or create user
     user_id = get_user_id(fingerprint)
     
-    # Check locations
-    response = {'action': 'none'}
-    
     # Check if at START location
-    if is_near_location(current_lat, current_lon, *START_GPS, GPS_THRESHOLD):
+    if True: #is_near_location(0, 0, *START_GPS, GPS_THRESHOLD)
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
             
@@ -192,11 +126,8 @@ def check_location_starting():
                 VALUES (?, ?)
                 ''', (user_id, start_time))
                 conn.commit()
-                response = {
-                    'action': 'timer_started',
-                    'message': 'Timer started! Go to endpoint location'
-                }
-                return redirect(url_for('check-location-ending'))
+
+                return redirect(url_for('check_location_ending'))
             else:
                 response = {
                     'action': 'already_started',
@@ -205,16 +136,16 @@ def check_location_starting():
     
     return render_template("check-location-starting.html")
 
-@app.route(baseurl + '/check-location-ending', methods=['POST'])
+@app.route(baseurl + '/check-location-ending')
 def check_location_ending():
     """Endpoint to check if user is at start/end location and manage timer"""
     # Get current location from request
-    data = request.json
+    """data = request.json
     current_lat = data.get('latitude')
     current_lon = data.get('longitude')
     
     if not current_lat or not current_lon:
-        return jsonify({'error': 'Missing coordinates'}), 400
+        return jsonify({'error': 'Missing coordinates'}), 400"""
     
     # Create fingerprint from IP + User-Agent
     fingerprint = f"{request.remote_addr}-{request.user_agent.string}"
@@ -226,7 +157,7 @@ def check_location_ending():
     response = {'action': 'none'}
 
     # Check if at END location
-    if is_near_location(current_lat, current_lon, *END_GPS, GPS_THRESHOLD):
+    if True: #is_near_location(current_lat, current_lon, *END_GPS, GPS_THRESHOLD):
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
             
@@ -242,7 +173,7 @@ def check_location_ending():
                 # Stop the timer
                 timer_id, start_time = active_timer
                 end_time = time.time()
-                elapsed = end_time - start_time
+                elapsed = math.floor(end_time - start_time)
                 
                 # Update database
                 cursor.execute('''
@@ -254,33 +185,26 @@ def check_location_ending():
 
                 now = time.time()
                 rank = conn.execute('''
-                SELECT 
-                (SELECT COUNT(*) 
-                FROM entries AS e2 
-                WHERE e2.elapsed_time <= e1.elapsed_time) as row_number, 
-                e1.*
-                FROM entries AS e1
-                WHERE end_time = ?
-                ORDER BY time
-                ''', (now,)).fetchone()
-                rank = rank[0]
-                event_id = rank["id"]
-
-                rank, cluster_size, percentile = get_cluster_rank(event_id)
+                SELECT *
+                FROM timer_events AS e1
+                WHERE id = ?
+                ORDER BY elapsed_time
+                ''', (timer_id,)).fetchone()
+                time_rank = rank[0]
+                print(time_rank)
     
                 if rank is None:
                     return jsonify({
                     'error': 'Ranking not available',
                     'reason': 'Not enough data or event not found'
                     }), 404
-                
-                return redirect(url_for('result_page', rank=rank, time=round(elapsed, 2), cluster_size=cluster_size, percentile=percentile))
+                return redirect(url_for('result_page', rank=time_rank, time=round(elapsed, 2)))
             else:
                 response = {
                     'action': 'no_active_timer',
                     'message': 'No active timer to stop'
                 }
-    return render_template("check_location_ending.html")
+    return render_template("check-location-ending.html")
 
     
 @app.route(baseurl + '/user-history/<int:user_id>')
@@ -333,8 +257,8 @@ def all_history():
     #return the template
     return render_template("all-history.html", entries=events)
 
-@app.route(baseurl + '/result-page/<int:rank>/<int:time>/<int:cluster_size>/<float:percentile>')
-def result_page(rank, time, cluster_size, percentile):
+@app.route(baseurl + '/result-page/<int:rank>/<int:time>')
+def result_page(rank, time):
     def calculate_carbon_emissions(time_minutes):
         # Calculate distance based on time and average speed
         distance_km = (time_minutes / 60) * 30
@@ -344,7 +268,7 @@ def result_page(rank, time, cluster_size, percentile):
 
     carbon = calculate_carbon_emissions(time)
     carbon = round(carbon, 0)
-    return render_template('result-page.html', rank=rank, carbon=carbon, time=time, cluster_size=cluster_size, percentile=percentile)
+    return render_template('result-page.html', rank=rank, carbon=carbon, time=time)
 
 
 

@@ -6,26 +6,22 @@
    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles/timer.css') }}">
    <title>Timer for {{ name }}</title>
    <script>
-       let startTime = new Date("{{ start_time }}").getTime();
-       let timerInterval;
-
-
        function startTimer() {
-           timerInterval = setInterval(function() {
-               let now = new Date().getTime();
-               let distance = now - startTime;
+            let startTime = new Date().getTime(); // 設置計時開始時間
+
+            timerInterval = setInterval(function () {
+            let now = new Date().getTime();
+            let distance = now - startTime;
 
 
-               let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-               let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-               let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            let hours = Math.floor(distance / (1000 * 60 * 60));
+            let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            let seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
 
-            
-               document.getElementById("timer").innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
+            document.getElementById("timer").innerHTML = hours + "h " + minutes + "m " + seconds + "s";
 
-
-           }, 1000);
+    }, 1000);
        }
 
 
