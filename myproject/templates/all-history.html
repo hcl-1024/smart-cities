@@ -32,7 +32,7 @@
             <thead>
                 <tr class="top">
                     <th>ID</th>
-                    <th>Total Time</th>
+                    <th>Total Time (min:sec)</th>
                 </tr>
             </thead>
             <tbody>
@@ -41,7 +41,9 @@
                     <td>{{ entry['user_id'] }}</td>
                     <td>
                         {% if entry['elapsed_time'] is not none %}
-                            {{ entry['elapsed_time'] // 60 }}:{{ entry['elapsed_time'] % 60 }}
+                            {% set elapsed_minutes = entry['elapsed_time'] // 60 %}
+                            {% set elapsed_seconds = entry['elapsed_time'] % 60 %}
+                            {{ elapsed_minutes|int }}:{{ elapsed_seconds|int }}
                         {% else %}
                             N/A
                         {% endif %}

@@ -22,7 +22,7 @@
 <body>
     <div class="container">
         <div class="background-image ubuntu-regular">
-        <img src="images/logo.png" alt="ISF Logo">
+        <img src="../images/logo.png" alt="ISF Logo">
         <h1 class="fade-in">Rank</h1>
         </div>
 
@@ -38,8 +38,16 @@
             <tbody>
             {% for entry in entries %}
                 <tr class="table-row">
-                    <td>{{ entry['user_id'] }}</td>
-                    <td>{{ entry['elapsed_time'] // 60 }}:{{ entry['elapsed_time'] % 60 }}</td>
+                    <td>{{ user }}</td>
+                    <td>
+                        {% if entry['elapsed_time'] is not none %}
+                            {% set elapsed_minutes = entry['elapsed_time'] // 60 %}
+                            {% set elapsed_seconds = entry['elapsed_time'] % 60 %}
+                            {{ elapsed_minutes|int }}:{{ elapsed_seconds|int }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
                 </tr>
             {% endfor %}
             </tbody>

@@ -1,11 +1,13 @@
 from random import random
 from flask import Flask, request, session, jsonify , render_template, redirect, url_for
+import geocoder
 import sqlite3
 import time
 import math
 import os
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+import datetime
 
 baseurl = "/smartcities"
 app = Flask(__name__, static_url_path=baseurl)
@@ -13,9 +15,10 @@ app.secret_key = 'your_secret_key_here'
 DATABASE = 'gps_timer.db'
 
 # GPS coordinates (customize these with your specific locations)
-START_GPS = (37.7749, -122.4194)  # San Francisco coordinates
-END_GPS = (34.0522, -118.2437)    # Los Angeles coordinates
-GPS_THRESHOLD = 0.01  # Approximately 1.1 km (adjust for your needs)
+START_GPS = (37.7749, -122.4194)
+END_GPS = (34.0522, -118.2437)
+GPS_THRESHOLD = 0.01
+total_distance = 0
 
 # Initialize database
 def init_db():
@@ -35,19 +38,32 @@ def init_db():
             start_time TIMESTAMP,
             end_time TIMESTAMP,
             elapsed_time REAL,
-            temperature REAL,      -- Celsius
-            precipitation REAL,    -- mm
-            humidity REAL,         -- Percentage
-            traffic INTEGER,       -- 1-5 scale
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        ''')
+
+        conn.execute('''
+        CREATE TABLE IF NOT EXISTS webpage_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            accessed_page TEXT,
             recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES users(id)
         )
         ''')
         conn.commit()
 
-# Create database if not exists
-if not os.path.exists(DATABASE):
-    init_db()
+def get_current_gps_coordinates():
+    """
+    Retrieves the current GPS coordinates (latitude and longitude)
+    using the IP address of the machine.
+    """
+    g = geocoder.ip('me')  # 'me' uses the current machine's IP address
+    if g.latlng is not None:
+        return g.latlng
+    else:
+        return None
 
 def haversine(lat1, lon1, lat2, lon2):
     """Calculate distance between two GPS points in kilometers"""
@@ -65,9 +81,8 @@ def haversine(lat1, lon1, lat2, lon2):
 
 def is_near_location(current_lat, current_lon, target_lat, target_lon, threshold_km):
     """Check if current location is within threshold distance of target"""
-    """distance = haversine(current_lat, current_lon, target_lat, target_lon)
-    return distance <= threshold_km"""
-    return True # Simulate always being near the location for testing
+    distance = haversine(current_lat, current_lon, target_lat, target_lon)
+    return distance <= threshold_km
 
 def get_user_id(fingerprint):
     """Get or create user ID based on fingerprint"""
@@ -86,28 +101,43 @@ def get_user_id(fingerprint):
             conn.commit()
             return cursor.lastrowid
 
+def calculate_total_distance():
+    global total_distance
+    coordinates = get_current_gps_coordinates()
+    if coordinates is not None:
+        latitude, longitude = coordinates
+    else:
+        return jsonify({'error': 'Missing coordinates'}), 400
+    total_distance = round(haversine(*END_GPS, latitude, longitude)*1000)
+
+@app.route('/get-distance')
+def get_distance():
+    calculate_total_distance()
+    return jsonify({'value': total_distance})
+
 #check how each url matches
 @app.route(baseurl + '/check-location-starting')
 def check_location_starting():
-    """Endpoint to check if user is at start/end location and manage timer"""
-    # Get current location from request
-    """data = request.json
-    current_lat = data.get('latitude')
-    current_lon = data.get('longitude')"""
-
-    
-    
-    """if not current_lat or not current_lon:
-        return jsonify({'error': 'Missing coordinates'}), 400"""
-    
+    init_db()
     # Create fingerprint from IP + User-Agent
     fingerprint = f"{request.remote_addr}-{request.user_agent.string}"
     
     # Get or create user
     user_id = get_user_id(fingerprint)
+
+    # Get current location from request
+    coordinates = get_current_gps_coordinates()
+    if coordinates is not None:
+        latitude, longitude = coordinates
+    else:
+        return jsonify({'error': 'Missing coordinates'}), 400
     
+    with sqlite3.connect(DATABASE) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''INSERT INTO webpage_events (user_id, accessed_page) VALUES (?, ?)''', (user_id, request.path,))
+
     # Check if at START location
-    if True: #is_near_location(0, 0, *START_GPS, GPS_THRESHOLD)
+    if True: #is_near_location(latitude, longitude, *START_GPS, GPS_THRESHOLD):
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
             
@@ -127,7 +157,7 @@ def check_location_starting():
                 ''', (user_id, start_time))
                 conn.commit()
 
-                return redirect(url_for('check_location_ending'))
+                return redirect(url_for("check_location_ending"))
             else:
                 response = {
                     'action': 'already_started',
@@ -137,27 +167,39 @@ def check_location_starting():
     return render_template("check-location-starting.html")
 
 @app.route(baseurl + '/check-location-ending')
-def check_location_ending():
-    """Endpoint to check if user is at start/end location and manage timer"""
-    # Get current location from request
-    """data = request.json
-    current_lat = data.get('latitude')
-    current_lon = data.get('longitude')
-    
-    if not current_lat or not current_lon:
-        return jsonify({'error': 'Missing coordinates'}), 400"""
-    
+def check_location_ending(): 
     # Create fingerprint from IP + User-Agent
     fingerprint = f"{request.remote_addr}-{request.user_agent.string}"
     
     # Get or create user
     user_id = get_user_id(fingerprint)
+
     
     # Check locations
     response = {'action': 'none'}
 
+    coordinates = get_current_gps_coordinates()
+    if coordinates is not None:
+        latitude, longitude = coordinates
+    else:
+        return jsonify({'error': 'Missing coordinates'}), 400
+
+    with sqlite3.connect(DATABASE) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''INSERT INTO webpage_events (user_id, accessed_page) VALUES (?, ?)''', (user_id, request.path,))
+
+        # Get active timer
+        cursor.execute('''
+        SELECT id, start_time FROM timer_events 
+        WHERE user_id = ? AND end_time IS NULL
+        ORDER BY start_time DESC LIMIT 1
+        ''', (user_id,))
+        active_timer = cursor.fetchone()
+        timer_id, start_time = active_timer
+        start_time = start_time * 1000
+        
     # Check if at END location
-    if True: #is_near_location(current_lat, current_lon, *END_GPS, GPS_THRESHOLD):
+    if is_near_location(latitude, longitude, *END_GPS, GPS_THRESHOLD):
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
             
@@ -204,7 +246,8 @@ def check_location_ending():
                     'action': 'no_active_timer',
                     'message': 'No active timer to stop'
                 }
-    return render_template("check-location-ending.html")
+
+    return render_template("check-location-ending.html", name=user_id, start_time=start_time)
 
     
 @app.route(baseurl + '/user-history/<int:user_id>')
@@ -213,6 +256,9 @@ def user_history(user_id):
     with sqlite3.connect(DATABASE) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
+
+        cursor.execute('''INSERT INTO webpage_events (user_id, accessed_page) VALUES (?, ?)''', (user_id, request.path,))
+
         
         # Get user info
         cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
@@ -229,11 +275,11 @@ def user_history(user_id):
                elapsed_time
         FROM timer_events 
         WHERE user_id = ?
-        ORDER BY start_time DESC
+        ORDER BY elapsed_time
         ''', (user_id,))
         events = cursor.fetchall()
     
-    return render_template("user-history.html", entries=events)
+    return render_template("user-history.html", entries=events, user=user_id)
 
 @app.route(baseurl + '/all-history')
 def all_history():
@@ -242,6 +288,14 @@ def all_history():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
+        # Create fingerprint from IP + User-Agent
+        fingerprint = f"{request.remote_addr}-{request.user_agent.string}"
+    
+        # Get or create user
+        user_id = get_user_id(fingerprint)
+
+        cursor.execute('''INSERT INTO webpage_events (user_id, accessed_page) VALUES (?, ?)''', (user_id, request.path,))
+
         cursor.execute('''
         SELECT u.id AS user_id, u.created_at,
                t.id AS event_id, 

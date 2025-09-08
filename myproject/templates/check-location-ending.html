@@ -6,8 +6,9 @@
    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles/timer.css') }}">
    <title>Timer for {{ name }}</title>
    <script>
-       function startTimer() {
-            let startTime = new Date().getTime(); // 設置計時開始時間
+       function startTimer(date) {
+            let startTime = new Date(Math.round(date)); // 設置計時開始時間
+            console.log(startTime)
 
             timerInterval = setInterval(function () {
             let now = new Date().getTime();
@@ -41,10 +42,25 @@
            }
        }
 
+        function updateVariableValue() {
+            fetch('/get-distance')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('distance-value').textContent = `${data.value}`;
+            });
+        }
+
+        // Update the variable value every 10 seconds
+        setInterval(updateVariableValue, 10000);
+        
+        // Initial call to display the variable value
+        updateVariableValue();
+
 
        window.onload = function() {
-           startTimer();
-           createConfetti();
+        const date = "{{ start_time }}"; // 從後端獲取的開始時間
+        startTimer(date);
+        createConfetti();
        };
    </script>
 </head>
@@ -52,6 +68,8 @@
    <div class="container">
        <h1>Timer for {{ name }}</h1>
        <div id="timer" class="timer-display"></div>
+       <div id="distance">You are 
+       <p id="distance-value" class="timer-display"></p> meters away from the ending point! </div>
    </div>
 </body>
 </html>

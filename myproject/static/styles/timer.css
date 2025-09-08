@@ -40,7 +40,7 @@ h1 {
 
 
 .timer-display {
-   font-size: 3em;
+   font-size: 2em;
    color: #e94e77;
    background: linear-gradient(90deg, #ff7e5f, #4c4b4b);
    -webkit-background-clip: text;
@@ -73,4 +73,10 @@ h1 {
    input[type="text"] {
        width: 100%;
    }
+}
+
+#distance {
+   font-size: 1.5em;
+   color: #4a90e2;
+   margin-top: 20px;
 }
