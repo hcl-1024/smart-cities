@@ -15,8 +15,8 @@ app.secret_key = 'your_secret_key_here'
 DATABASE = 'gps_timer.db'
 
 # GPS coordinates (customize these with your specific locations)
-START_GPS = (37.7749, -122.4194)
-END_GPS = (34.0522, -118.2437)
+START_GPS = (22.2783, 114.1747)
+END_GPS = (22.2783, 114.1747)
 GPS_THRESHOLD = 0.01
 total_distance = 0
 
@@ -118,7 +118,6 @@ def get_distance():
 #check how each url matches
 @app.route(baseurl + '/check-location-starting')
 def check_location_starting():
-    init_db()
     # Create fingerprint from IP + User-Agent
     fingerprint = f"{request.remote_addr}-{request.user_agent.string}"
     
@@ -129,6 +128,7 @@ def check_location_starting():
     coordinates = get_current_gps_coordinates()
     if coordinates is not None:
         latitude, longitude = coordinates
+        print(f"Current coordinates: {latitude}, {longitude}")
     else:
         return jsonify({'error': 'Missing coordinates'}), 400
     
@@ -137,7 +137,7 @@ def check_location_starting():
         cursor.execute('''INSERT INTO webpage_events (user_id, accessed_page) VALUES (?, ?)''', (user_id, request.path,))
 
     # Check if at START location
-    if True: #is_near_location(latitude, longitude, *START_GPS, GPS_THRESHOLD):
+    if is_near_location(latitude, longitude, *START_GPS, GPS_THRESHOLD):
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
             
@@ -185,18 +185,24 @@ def check_location_ending():
         return jsonify({'error': 'Missing coordinates'}), 400
 
     with sqlite3.connect(DATABASE) as conn:
-        cursor = conn.cursor()
-        cursor.execute('''INSERT INTO webpage_events (user_id, accessed_page) VALUES (?, ?)''', (user_id, request.path,))
+            cursor = conn.cursor()
 
-        # Get active timer
-        cursor.execute('''
-        SELECT id, start_time FROM timer_events 
-        WHERE user_id = ? AND end_time IS NULL
-        ORDER BY start_time DESC LIMIT 1
-        ''', (user_id,))
-        active_timer = cursor.fetchone()
-        timer_id, start_time = active_timer
-        start_time = start_time * 1000
+            # Insert webpage event
+            cursor.execute('''INSERT INTO webpage_events (user_id, accessed_page) VALUES (?, ?)''', (user_id, request.path))
+            conn.commit()
+
+            # Get active timer
+            cursor.execute('''
+                SELECT id, start_time FROM timer_events 
+                WHERE user_id = ? AND end_time IS NULL
+                ORDER BY start_time DESC LIMIT 1
+            ''', (user_id,))
+            active_timer = cursor.fetchone()
+
+            if active_timer:
+                timer_id, start_time = active_timer
+                start_time = start_time * 1000
+
         
     # Check if at END location
     if is_near_location(latitude, longitude, *END_GPS, GPS_THRESHOLD):
@@ -225,15 +231,14 @@ def check_location_ending():
                 ''', (end_time, elapsed, timer_id))
                 conn.commit()
 
-                now = time.time()
                 rank = conn.execute('''
-                SELECT *
+                SELECT id
                 FROM timer_events AS e1
-                WHERE id = ?
-                ORDER BY elapsed_time
-                ''', (timer_id,)).fetchone()
-                time_rank = rank[0]
-                print(time_rank)
+                ORDER BY elapsed_time ASC
+                ''').fetchall()
+                rank = [row[0] for row in rank]
+                print(rank)
+                time_rank = rank.index(timer_id) + 1 if rank else None
     
                 if rank is None:
                     return jsonify({
@@ -296,6 +301,8 @@ def all_history():
 
         cursor.execute('''INSERT INTO webpage_events (user_id, accessed_page) VALUES (?, ?)''', (user_id, request.path,))
 
+        conn.commit()
+
         cursor.execute('''
         SELECT u.id AS user_id, u.created_at,
                t.id AS event_id, 
@@ -307,6 +314,8 @@ def all_history():
         ORDER BY t.start_time DESC
         ''')
         events = cursor.fetchall()
+        conn.commit()
+
     
     #return the template
     return render_template("all-history.html", entries=events)
