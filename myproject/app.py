@@ -15,10 +15,11 @@ app.secret_key = 'your_secret_key_here'
 DATABASE = 'gps_timer.db'
 
 # GPS coordinates (customize these with your specific locations)
-START_GPS = (22.2783, 114.1747)
-END_GPS = (22.2783, 114.1747)
-GPS_THRESHOLD = 0.01
+START_GPS = (22.265090, 114.130249)
+END_GPS = (22.266940, 114.129432)
+GPS_THRESHOLD = 0.02  # in kilometers
 total_distance = 0
+#index = 0
 
 # Initialize database
 def init_db():
@@ -124,65 +125,20 @@ def check_location_starting():
     # Get or create user
     user_id = get_user_id(fingerprint)
 
-    # Get current location from request
-    coordinates = get_current_gps_coordinates()
-    if coordinates is not None:
-        latitude, longitude = coordinates
-        print(f"Current coordinates: {latitude}, {longitude}")
-    else:
-        return jsonify({'error': 'Missing coordinates'}), 400
-    
     with sqlite3.connect(DATABASE) as conn:
-        cursor = conn.cursor()
-        cursor.execute('''INSERT INTO webpage_events (user_id, accessed_page) VALUES (?, ?)''', (user_id, request.path,))
-
-    # Check if at START location
-    if is_near_location(latitude, longitude, *START_GPS, GPS_THRESHOLD):
-        with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
-            
-            # Check for existing active timer
-            cursor.execute('''
-            SELECT id FROM timer_events 
-            WHERE user_id = ? AND end_time IS NULL
-            ''', (user_id,))
-            active_timer = cursor.fetchone()
-            
-            if not active_timer:
-                # Start new timer
-                start_time = time.time()
-                cursor.execute('''
-                INSERT INTO timer_events (user_id, start_time)
-                VALUES (?, ?)
-                ''', (user_id, start_time))
-                conn.commit()
+            cursor.execute('''INSERT INTO webpage_events (user_id, accessed_page) VALUES (?, ?)''', (user_id, request.path,))
 
-                return redirect(url_for("check_location_ending"))
-            else:
-                response = {
-                    'action': 'already_started',
-                    'message': 'Timer already running'
-                }
-    
     return render_template("check-location-starting.html")
 
-@app.route(baseurl + '/check-location-ending')
+
+@app.route(baseurl + '/check-location-ending', endpoint='check_location_ending')
 def check_location_ending(): 
     # Create fingerprint from IP + User-Agent
     fingerprint = f"{request.remote_addr}-{request.user_agent.string}"
     
     # Get or create user
     user_id = get_user_id(fingerprint)
-
-    
-    # Check locations
-    response = {'action': 'none'}
-
-    coordinates = get_current_gps_coordinates()
-    if coordinates is not None:
-        latitude, longitude = coordinates
-    else:
-        return jsonify({'error': 'Missing coordinates'}), 400
 
     with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
@@ -202,12 +158,69 @@ def check_location_ending():
             if active_timer:
                 timer_id, start_time = active_timer
                 start_time = start_time * 1000
+    
+    # Check locations
+    response = {'action': 'none'}
 
-        
-    # Check if at END location
-    if is_near_location(latitude, longitude, *END_GPS, GPS_THRESHOLD):
-        with sqlite3.connect(DATABASE) as conn:
-            cursor = conn.cursor()
+        # Check if at END location
+    return render_template("check-location-ending.html", name=user_id, start_time=start_time)
+
+@app.route(baseurl + '/get-location/<string:type>')
+def get_location(type):
+        #global index
+        #index += 1
+        #print(index)
+
+        fingerprint = f"{request.remote_addr}-{request.user_agent.string}"
+
+        response = {'action': 'none'}
+
+        # Get or create user
+        user_id = get_user_id(fingerprint)
+
+        # Get current location from request
+        coordinates = get_current_gps_coordinates()
+        if coordinates is not None:
+            latitude, longitude = coordinates
+        else:
+            return jsonify({'error': 'Missing coordinates'}), 400
+
+        # Check if at START location
+        if is_near_location(latitude, longitude, *START_GPS, GPS_THRESHOLD) and type == "start":
+            with sqlite3.connect(DATABASE) as conn:
+                cursor = conn.cursor()
+            
+                # Check for existing active timer
+                cursor.execute('''
+                SELECT id FROM timer_events 
+                WHERE user_id = ? AND end_time IS NULL
+                ''', (user_id,))
+                active_timer = cursor.fetchone()
+            
+                if not active_timer:
+                    # Start new timer
+                    start_time = time.time()
+                    cursor.execute('''
+                    INSERT INTO timer_events (user_id, start_time)
+                    VALUES (?, ?)
+                    ''', (user_id, start_time))
+                    conn.commit()
+
+                    response = {
+                    'action': 'redirect',
+                    'url': "/smartcities/check-location-ending",
+                    }
+                    return jsonify(response)
+                else:
+                    response = {
+                        'action': 'already_started',
+                        'message': 'Timer already running'
+                    }
+
+        # Check if at END location
+        if is_near_location(latitude, longitude, *END_GPS, GPS_THRESHOLD) and type == "end":
+            with sqlite3.connect(DATABASE) as conn:
+                cursor = conn.cursor()
             
             # Get active timer
             cursor.execute('''
@@ -237,7 +250,6 @@ def check_location_ending():
                 ORDER BY elapsed_time ASC
                 ''').fetchall()
                 rank = [row[0] for row in rank]
-                print(rank)
                 time_rank = rank.index(timer_id) + 1 if rank else None
     
                 if rank is None:
@@ -245,16 +257,21 @@ def check_location_ending():
                     'error': 'Ranking not available',
                     'reason': 'Not enough data or event not found'
                     }), 404
-                return redirect(url_for('result_page', rank=time_rank, time=round(elapsed, 2)))
+                
+                response = {
+                    'action': 'redirect',
+                    'url': f"result-page/{time_rank}/{round(elapsed, 2)}",
+                }
+
+                return jsonify(response)
             else:
                 response = {
                     'action': 'no_active_timer',
                     'message': 'No active timer to stop'
                 }
 
-    return render_template("check-location-ending.html", name=user_id, start_time=start_time)
+        return response
 
-    
 @app.route(baseurl + '/user-history/<int:user_id>')
 def user_history(user_id):
     """Get timer history for a specific user"""
@@ -311,7 +328,7 @@ def all_history():
                t.elapsed_time
         FROM users u
         JOIN timer_events t ON u.id = t.user_id
-        ORDER BY t.start_time DESC
+        ORDER BY t.elapsed_time ASC
         ''')
         events = cursor.fetchall()
         conn.commit()
@@ -320,18 +337,9 @@ def all_history():
     #return the template
     return render_template("all-history.html", entries=events)
 
-@app.route(baseurl + '/result-page/<int:rank>/<int:time>')
+@app.route(baseurl + '/result-page/<int:rank>/<int:time>', endpoint='result_page/<int:rank>/<int:time>')
 def result_page(rank, time):
-    def calculate_carbon_emissions(time_minutes):
-        # Calculate distance based on time and average speed
-        distance_km = (time_minutes / 60) * 30
-        # Calculate carbon emissions for the trip
-        carbon_emissions = distance_km * 0.2
-        return carbon_emissions
-
-    carbon = calculate_carbon_emissions(time)
-    carbon = round(carbon, 0)
-    return render_template('result-page.html', rank=rank, carbon=carbon, time=time)
+    return render_template('result-page.html', rank=rank, time=time)
 
 
 

@@ -31,5 +31,33 @@
 
         <h2 class="slide-in ubuntu-regular">Current Entries</h2>
 
+        <script>
+        function checkLocation() {
+            return fetch('/smartcities/get-location/start')
+                .then(response => {
+                    return response.json()
+                })
+                .catch(error => {
+                    console.error('Error fetching location:', error)
+                    return Promise.reject(error); // Return a rejected promise to propagate the error
+                });
+        }
+
+        setInterval(() => {
+            checkLocation()
+                .then(data => {
+                    if(data.action === 'redirect' && data.url) {
+                        window.location.href = data.url;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error in checkLocation:', error);
+                });
+        }, 10000)
+
+        checkLocation() // Initial call to start checking immediately
+
+        </script>
+
 </body>
-</html>
+</html> 
