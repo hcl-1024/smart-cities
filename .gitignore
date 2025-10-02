@@ -1,0 +1,11 @@
+# Byte-code files
+__pycache__/
+
+# Virtual environment
+venv/
+.venv/
+myenv/
+sqlite-autoconf-3480000/
+
+# Editor-specific files
+
