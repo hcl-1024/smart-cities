@@ -43,7 +43,7 @@
                         {% if entry['elapsed_time'] is not none %}
                             {% set elapsed_minutes = entry['elapsed_time'] // 60 %}
                             {% set elapsed_seconds = entry['elapsed_time'] % 60 %}
-                            {{ elapsed_minutes|int }}:{{ elapsed_seconds|int }}
+                            {{ elapsed_minutes|int }}:{{ "{:02d}".format(elapsed_seconds|int) }}
                         {% else %}
                             N/A
                         {% endif %}

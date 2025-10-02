@@ -15,8 +15,8 @@ app.secret_key = 'your_secret_key_here'
 DATABASE = 'gps_timer.db'
 
 # GPS coordinates (customize these with your specific locations)
-START_GPS = (22.265090, 114.130249)
-END_GPS = (22.266940, 114.129432)
+START_GPS = (22.299753, 114.157219) #gps coordinates for testing
+END_GPS = (22.300820, 114.155448) #gps coordinates for testing
 GPS_THRESHOLD = 0.02  # in kilometers
 total_distance = 0
 #index = 0
@@ -67,6 +67,7 @@ def get_current_gps_coordinates():
         return None
 
 def haversine(lat1, lon1, lat2, lon2):
+    print(lat1, lon1, lat2, lon2)
     """Calculate distance between two GPS points in kilometers"""
     R = 6371  # Earth radius in km
     
@@ -173,17 +174,30 @@ def get_location(type):
 
         fingerprint = f"{request.remote_addr}-{request.user_agent.string}"
 
-        response = {'action': 'none'}
-
         # Get or create user
         user_id = get_user_id(fingerprint)
 
         # Get current location from request
         coordinates = get_current_gps_coordinates()
+        #if index == 2:
+        #    coordinates = END_GPS
+
         if coordinates is not None:
             latitude, longitude = coordinates
+            distance_start = haversine(latitude, longitude, *START_GPS)
+            distance_end = haversine(latitude, longitude, *END_GPS)
         else:
             return jsonify({'error': 'Missing coordinates'}), 400
+        
+        response = {
+            'action': 'none', 
+            'latitude': latitude,
+            'longitude': longitude,
+            'fingerprint': fingerprint, 
+            'user_id': user_id,
+            'distance_start': distance_start, 
+            'distance_end': distance_end
+        }
 
         # Check if at START location
         if is_near_location(latitude, longitude, *START_GPS, GPS_THRESHOLD) and type == "start":

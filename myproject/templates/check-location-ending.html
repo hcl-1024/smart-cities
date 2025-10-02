@@ -64,6 +64,8 @@
         setInterval(() => {
             checkLocation()
                 .then(data => {
+                    console.log(data)
+                    
                     if (data && data.action === 'redirect' && data.url) {
                         window.location.href = data.url;
                     }
